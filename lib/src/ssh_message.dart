@@ -18,6 +18,12 @@ class SSHMessageReader {
   /// Message data.
   final Uint8List data;
 
+  String readUtf8AllowMalformed() {
+    final bytes = readString();
+    // 使用允许错误编码字符的解码器
+    return utf8.decode(bytes, allowMalformed: true);
+  }
+
   SSHMessageReader(this.data) : _byteData = ByteData.sublistView(data);
 
   /// ByteData view of [data], used for reading numbers.
