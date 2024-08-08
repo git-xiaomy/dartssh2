@@ -806,6 +806,10 @@ class SSHClient {
   void _startAuthentication() {
     printDebug?.call('SSHClient._startAuthentication');
 
+    if (onUserInfoRequest != null) {
+      _authMethodsLeft.add(SSHAuthMethod.keyboardInteractive);
+    }
+
     if (identities != null && identities!.isNotEmpty) {
       _authMethodsLeft.add(SSHAuthMethod.publicKey);
     }
@@ -814,9 +818,7 @@ class SSHClient {
       _authMethodsLeft.add(SSHAuthMethod.password);
     }
 
-    if (onUserInfoRequest != null) {
-      _authMethodsLeft.add(SSHAuthMethod.keyboardInteractive);
-    }
+
 
     _authMethodsLeft.add(SSHAuthMethod.none);
 
