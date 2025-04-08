@@ -15,7 +15,7 @@ const chunkSize = 16 * 1024;
 const maxBytesOnTheWire = chunkSize * 64;
 
 /// Holds the state of a streaming write operation from [stream] to [file].
-class SftpFileWriter{
+class SftpFileWriter with DoneFuture {
   /// The remote file to write to.
   final SftpFile file;
 
@@ -28,14 +28,12 @@ class SftpFileWriter{
   /// Called when [bytes] of data have been successfully written to [file].
   final Function(int bytes)? onProgress;
 
-  /// 是否暂停的标志位
-  bool pauseFlag = false;
-
   /// Creates a new [SftpFileWriter]. The upload process is started immediately
   /// after construction.
   SftpFileWriter(this.file, this.stream, this.offset, this.onProgress) {
     _subscription =
         stream.transform(MaxChunkSize(chunkSize)).listen(_handleLocalData);
+
     _subscription.onDone(_handleLocalDone);
   }
 
@@ -74,18 +72,13 @@ class SftpFileWriter{
   ///
   /// Calling [abort] will make [done] to complete immediately.
   Future<void> abort() async {
-    pause();
-    // 标记为已完成
     _doneCompleter.complete();
-    // 取消流订阅
     await _subscription.cancel();
-    await file.close();
   }
 
   /// Pauses [stream] from emitting more data. It's safe to call this even if
   /// the stream is already paused. Use [resume] to resume the operation.
   void pause() {
-    pauseFlag = true;
     if (!_subscription.isPaused) {
       _subscription.pause();
     }
@@ -94,7 +87,6 @@ class SftpFileWriter{
   /// Resumes [stream] after it has been paused. It's safe to call this even if
   /// the stream is not paused. Use [pause] to pause the operation.
   void resume() {
-    pauseFlag = false;
     _subscription.resume();
   }
 
@@ -110,17 +102,17 @@ class SftpFileWriter{
     if (_bytesOnTheWire >= maxBytesOnTheWire) {
       _subscription.pause();
     } else {
-      if(!pauseFlag){
-        _subscription.resume();
-      }
+      _subscription.resume();
     }
+
     final chunkWriteOffset = offset + _bytesSent;
     _bytesSent += chunk.length;
     await file.writeBytes(chunk, offset: chunkWriteOffset);
+
     _bytesAcked += chunk.length;
     onProgress?.call(_bytesAcked);
 
-    if (_bytesOnTheWire < maxBytesOnTheWire && !pauseFlag) {
+    if (_bytesOnTheWire < maxBytesOnTheWire) {
       _subscription.resume();
     }
 
@@ -143,4 +135,36 @@ class SftpFileWriter{
       _doneCompleter.complete();
     }
   }
+}
+
+/// Implements [Future] interface for [SftpFileWriter].
+///
+/// This is for compatibility with earlier versions of dartssh2 and dartssh2.
+mixin DoneFuture implements Future {
+  Future<void> get done;
+
+  @override
+  Stream<void> asStream() => done.asStream();
+
+  @override
+  Future<void> catchError(
+      Function onError, {
+        bool Function(Object error)? test,
+      }) =>
+      done.catchError(onError, test: test);
+
+  @override
+  Future<S> then<S>(FutureOr<S> Function(void) onValue, {Function? onError}) =>
+      done.then(onValue, onError: onError);
+
+  @override
+  Future<void> whenComplete(FutureOr Function() action) =>
+      done.whenComplete(action);
+
+  @override
+  Future<void> timeout(
+      Duration timeLimit, {
+        FutureOr<void> Function()? onTimeout,
+      }) =>
+      done.timeout(timeLimit, onTimeout: onTimeout);
 }
