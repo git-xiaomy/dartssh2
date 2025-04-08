@@ -1,3 +1,15 @@
+## [2.13.0] - 2025-mm-dd
+- docs: Update NoPorts naming [#115]. [@XavierChanth].
+
+## [2.12.0] - 2025-02-08
+- Fixed streams and channel not closing after receiving SSH_Message_Channel_Close [#116]. [@cbenhagen].
+- Fixed lint issues.
+- Added tests.
+- Updated dependencies.
+
+## [2.11.0] - 2024-11-19
+- Fixed Type 'Uint8' not found issue.
+
 ## [2.10.0] - 2024-08-29
 - Improved Readme.
 - Bug fix in SftpFileWriter for [#50], [#71], [#100].
